@@ -4,25 +4,33 @@
  */
 
 class SimpleCache {
-  constructor() {
+  constructor(maxSize = 2000) {
     /** @type {Map<string, { body: Buffer|string, contentType: string, expires: number }>} */
     this._map = new Map();
+    this._maxSize = maxSize;
 
     // 每 5 分钟清理一次过期条目，防止内存泄漏
     setInterval(() => this._cleanup(), 5 * 60 * 1000).unref();
   }
 
   /**
-   * 存入缓存
+   * 存入缓存，超出最大容量时淘汰最旧的条目（LRU）
    * @param {string} key
    * @param {{ body: Buffer|string, contentType: string }} value
    * @param {number} ttlSeconds 默认 300 秒
    */
   set(key, value, ttlSeconds = 300) {
+    // 先删除旧条目，保证 Map 顺序反映最新访问时间
+    this._map.delete(key);
     this._map.set(key, {
       ...value,
       expires: Date.now() + ttlSeconds * 1000,
     });
+    // LRU 淘汰：超出容量时移除最旧的条目
+    while (this._map.size > this._maxSize) {
+      const firstKey = this._map.keys().next().value;
+      this._map.delete(firstKey);
+    }
   }
 
   /**

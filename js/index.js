@@ -829,7 +829,11 @@ const API = {
 
             if (!Array.isArray(data)) throw new Error("搜索结果格式错误");
 
-            return data.map(song => ({
+            // 过滤掉无有效数据的条目（部分音源可能返回不包含歌曲信息的占位记录）
+            const validSongs = data.filter(song => song && typeof song.id === "string" && song.id.length > 0);
+            if (validSongs.length === 0) throw new Error("该音源暂无此搜索结果，建议切换其他音源");
+
+            return validSongs.map(song => ({
                 id: song.id,
                 name: song.name,
                 artist: song.artist,
@@ -988,6 +992,8 @@ function validateStateConsistency() {
         state.currentAudioUrl = null;
         state.currentPlaybackTime = 0;
         
+        // 同步清空歌词，避免播放列表为空时仍显示上一首歌的歌词
+        if (typeof clearLyricsContent === "function") clearLyricsContent();
         // 更新本地持久化
         safeRemoveLocalStorage("currentSong", { skipRemote: true });
         safeSetLocalStorage("currentTrackIndex", "-1", { skipRemote: true });
@@ -4727,7 +4733,7 @@ function exportPlaylist() {
         const formattedTimestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `solara-playlist-${formattedTimestamp}.json`;
+        anchor.download = `suremusic-playlist-${formattedTimestamp}.json`;
         document.body.appendChild(anchor);
         anchor.click();
         document.body.removeChild(anchor);
@@ -5355,7 +5361,7 @@ function exportFavorites() {
         const formattedTimestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `solara-favorites-${formattedTimestamp}.json`;
+        anchor.download = `suremusic-favorites-${formattedTimestamp}.json`;
         document.body.appendChild(anchor);
         anchor.click();
         document.body.removeChild(anchor);
@@ -5553,13 +5559,18 @@ function updatePlaylistHighlight() {
 }
 
 // 修复：播放歌曲函数 - 支持统一播放列表
-function waitForAudioReady(player) {
+function waitForAudioReady(player, timeoutMs = 15000) {
     if (!player) return Promise.resolve();
     if (player.readyState >= 1) {
         return Promise.resolve();
     }
     return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            cleanup();
+            reject(new Error('音频加载超时'));
+        }, timeoutMs);
         const cleanup = () => {
+            clearTimeout(timer);
             player.removeEventListener('loadedmetadata', onLoaded);
             player.removeEventListener('error', onError);
         };
@@ -6218,11 +6229,10 @@ function syncLyrics() {
     const currentTime = dom.audioPlayer.currentTime;
     let currentIndex = -1;
 
+    // 遍历全部歌词，确保取到当前时间对应的最后一行（处理相同时间戳的多行歌词）
     for (let i = 0; i < state.lyricsData.length; i++) {
         if (currentTime >= state.lyricsData[i].time) {
             currentIndex = i;
-        } else {
-            break;
         }
     }
 
@@ -6245,10 +6255,13 @@ function syncLyrics() {
         }
 
         lyricTargets.forEach(({ elements, container, inline }) => {
+            // 当用户主动拖动进度条时（isSeeking），始终滚动到当前行；
+            // 正常播放时遵循 userScrolledLyrics 判断
+            const forceScroll = state.isSeeking;
             elements.forEach((element, index) => {
                 if (index === currentIndex) {
                     element.classList.add("current");
-                    const shouldScroll = !state.userScrolledLyrics && (!inline || state.isMobileInlineLyricsOpen);
+                    const shouldScroll = forceScroll || (!state.userScrolledLyrics && (!inline || state.isMobileInlineLyricsOpen));
                     if (shouldScroll) {
                         scrollToCurrentLyric(element, container);
                     }

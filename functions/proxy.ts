@@ -146,7 +146,7 @@ async function proxyApiRequest(url: URL, request: Request, waitUntil?: (promise:
   // 判断是否应该缓存：必须是 200 状态，且内容不能是空数组或包含错误标识，且未指定强制刷新
   const isSearch = url.searchParams.get("types") === "search";
   const isEmptyResult = responseText.trim() === "[]";
-  const isError = responseText.includes('"error"') || responseText.includes('"status":0');
+  const isError = responseText.includes('"error"') || responseText.includes('"status":0') || responseText.includes('"detail"');
   
   let shouldCache = upstream.status === 200 && request.method === "GET" && !isError && !bypassCache;
   

@@ -163,7 +163,7 @@ async function proxyApiRequest(reqUrl, req, res) {
   // ── 判断是否缓存（与 Cloudflare 版本逻辑完全一致） ──────────────────────────
   const isSearch = parsedReq.searchParams.get('types') === 'search';
   const isEmptyResult = responseText.trim() === '[]';
-  const isError = responseText.includes('"error"') || responseText.includes('"status":0');
+  const isError = responseText.includes('"error"') || responseText.includes('"status":0') || responseText.includes('"detail"');
 
   let shouldCache = upstream.status === 200 && !isError && !bypassCache;
   if (isSearch && isEmptyResult) shouldCache = false;
