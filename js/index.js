@@ -648,10 +648,16 @@ function buildAudioProxyUrl(url) {
 }
 
 const SOURCE_OPTIONS = [
-    { value: "netease", label: "网易云音乐" },
-    { value: "kuwo", label: "酷我音乐" },
     { value: "joox", label: "JOOX音乐" },
-    { value: "bilibili", label: "哔哩哔哩" }
+    { value: "netease", label: "网易云音乐" },
+    { value: "bilibili", label: "哔哩哔哩" },
+    { value: "tencent", label: "QQ音乐" },
+    { value: "kuwo", label: "酷我音乐" },
+    { value: "tidal", label: "TIDAL" },
+    { value: "qobuz", label: "Qobuz" },
+    { value: "apple", label: "Apple Music" },
+    { value: "ytmusic", label: "YouTube Music" },
+    { value: "spotify", label: "Spotify" },
 ];
 
 function normalizeSource(value) {
@@ -5990,11 +5996,11 @@ function pickRandomExploreGenre() {
     return genres[index];
 }
 
-const EXPLORE_RADAR_SOURCES = ["netease", "kuwo"];
+const EXPLORE_RADAR_SOURCES = ["joox", "netease", "bilibili", "tencent", "kuwo"];
 
 function pickRandomExploreSource() {
     if (!Array.isArray(EXPLORE_RADAR_SOURCES) || EXPLORE_RADAR_SOURCES.length === 0) {
-        return "netease";
+        return "joox";
     }
     const index = Math.floor(Math.random() * EXPLORE_RADAR_SOURCES.length);
     return EXPLORE_RADAR_SOURCES[index];
